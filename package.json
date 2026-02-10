@@ -1,0 +1,27 @@
+{
+  "name": "celo-rafiki",
+  "version": "1.0.0",
+  "description": "AI-powered stablecoin remittance agent on Celo",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "generate-wallet": "ts-node src/scripts/generate-wallet.ts"
+  },
+  "keywords": ["celo", "agent", "stablecoins", "minipay"],
+  "author": "Rafiki Agent",
+  "license": "MIT",
+  "dependencies": {
+    "telegraf": "^4.15.3",
+    "viem": "^2.7.1",
+    "dotenv": "^16.4.1",
+    "@celo/identity": "^5.0.4",
+    "@celo/contractkit": "^5.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.16"
+  }
+}
