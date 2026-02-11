@@ -1,7 +1,7 @@
 import { Telegraf } from "telegraf";
 import * as dotenv from "dotenv";
 import { createWalletClient, http, publicActions } from "viem";
-import { celoAlfajores } from "viem/chains";
+import { celoSepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 
 dotenv.config();
@@ -16,7 +16,7 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}` || "0x0000000000000000000000000000000000000000000000000000000000000000");
 const client = createWalletClient({
     account,
-    chain: celoAlfajores,
+    chain: celoSepolia,
     transport: http(process.env.CELO_RPC_URL)
 }).extend(publicActions);
 
@@ -39,7 +39,7 @@ bot.command("wallet", (ctx) => {
     
 Address: \`${account.address}\`
     
-Network: Celo Alfajores (Testnet)
+Network: Celo Sepolia (Testnet)
     `, { parse_mode: "Markdown" });
 });
 
