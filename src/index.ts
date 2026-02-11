@@ -88,10 +88,31 @@ USDC: ${usdc.toFixed(2)}
     }
 });
 
-// 4. Send Command (Basic)
-bot.hears(/^send (\d+(\.\d+)?) usdc to (0x[a-fA-F0-9]{40})$/i, async (ctx) => {
+import { lookupPhoneNumber } from "./socialconnect";
+
+// ... (existing imports)
+
+// 4. Send Command (Updated)
+bot.hears(/^send (\d+(\.\d+)?) usdc to (.*)$/i, async (ctx) => {
     const amount = parseFloat(ctx.match[1]);
-    const recipient = ctx.match[3] as `0x${string}`;
+    let recipient = ctx.match[3];
+
+    // Check if recipient is a phone number
+    if (recipient.startsWith("+")) {
+        ctx.reply(`🔍 Searching SocialConnect for ${recipient}...`);
+        const resolvedAddress = await lookupPhoneNumber(recipient, process.env.AGENT_PRIVATE_KEY as string);
+        
+        if (resolvedAddress) {
+            ctx.reply(`✅ Found address: \`${resolvedAddress}\``, { parse_mode: "Markdown" });
+            recipient = resolvedAddress;
+        } else {
+            return ctx.reply(`⚠️ No wallet found for ${recipient}. They may need to register with SocialConnect (MiniPay/Valora).`);
+        }
+    }
+
+    if (!recipient.startsWith("0x")) {
+        return ctx.reply("❌ Invalid address or phone number.");
+    }
 
     ctx.reply(`💸 Sending ${amount} USDC to ${recipient}...`);
 
@@ -100,7 +121,7 @@ bot.hears(/^send (\d+(\.\d+)?) usdc to (0x[a-fA-F0-9]{40})$/i, async (ctx) => {
             address: process.env.USDC_ADDRESS as `0x${string}`,
             abi: USDC_ABI,
             functionName: 'transfer',
-            args: [recipient, BigInt(amount * 1e6)] // USDC 6 decimals
+            args: [recipient as `0x${string}`, BigInt(amount * 1e6)] // USDC 6 decimals
         });
 
         ctx.reply(`✅ Transaction Sent!
