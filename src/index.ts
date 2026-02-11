@@ -88,10 +88,40 @@ USDC: ${usdc.toFixed(2)}
     }
 });
 
-// 4. Fallback (NLP Placeholder)
+// 4. Send Command (Basic)
+bot.hears(/^send (\d+(\.\d+)?) usdc to (0x[a-fA-F0-9]{40})$/i, async (ctx) => {
+    const amount = parseFloat(ctx.match[1]);
+    const recipient = ctx.match[3] as `0x${string}`;
+
+    ctx.reply(`💸 Sending ${amount} USDC to ${recipient}...`);
+
+    try {
+        const hash = await client.writeContract({
+            address: process.env.USDC_ADDRESS as `0x${string}`,
+            abi: USDC_ABI,
+            functionName: 'transfer',
+            args: [recipient, BigInt(amount * 1e6)] // USDC 6 decimals
+        });
+
+        ctx.reply(`✅ Transaction Sent!
+        
+Hash: \`${hash}\`
+Explorer: https://celo-sepolia.blockscout.com/tx/${hash}`, { parse_mode: "Markdown" });
+    } catch (error: any) {
+        console.error(error);
+        ctx.reply(`❌ Failed: ${error.shortMessage || error.message}`);
+    }
+});
+
+// 5. Fallback (NLP Placeholder)
 bot.on("text", (ctx) => {
     const text = ctx.message.text;
-    ctx.reply(`🤖 I heard: "${text}". My AI brain is still being built, but I successfully received your message!`);
+    if (!text.startsWith('/')) {
+        ctx.reply(`🤖 I heard: "${text}".
+        
+To send money, use format:
+"Send 5 USDC to 0x..."`);
+    }
 });
 
 // Launch
