@@ -89,6 +89,7 @@ USDC: ${usdc.toFixed(2)}
 });
 
 import { lookupPhoneNumber } from "./socialconnect";
+import { parseCommand } from "./ai-parser";
 
 // ... (existing imports)
 
@@ -134,14 +135,73 @@ Explorer: https://celo-sepolia.blockscout.com/tx/${hash}`, { parse_mode: "Markdo
     }
 });
 
-// 5. Fallback (NLP Placeholder)
-bot.on("text", (ctx) => {
+// 5. AI NLP Handler
+bot.on("text", async (ctx) => {
     const text = ctx.message.text;
-    if (!text.startsWith('/')) {
-        ctx.reply(`🤖 I heard: "${text}".
+    if (text.startsWith('/')) return; // Ignore commands
+
+    ctx.reply("🤖 Analyzing request...");
+
+    const result = await parseCommand(text);
+
+    if (!result || result.intent === "unknown") {
+         return ctx.reply("🤔 I didn't understand that. Try 'Send 5 USDC to +123...'");
+    }
+
+    // Handle intents
+    if (result.intent === "balance") {
+        // ... (reuse balance logic or call function)
+        const balance = await client.getBalance({ address: account.address });
+        const celo = Number(balance) / 1e18;
+        const usdcBalance = await client.readContract({
+            address: process.env.USDC_ADDRESS as `0x${string}`,
+            abi: USDC_ABI,
+            functionName: 'balanceOf',
+            args: [account.address]
+        });
+        const usdc = Number(usdcBalance) / 1e6;
+        ctx.reply(`💰 *Wallet Balance*\n\nCELO: ${celo.toFixed(4)}\nUSDC: ${usdc.toFixed(2)}`, { parse_mode: "Markdown" });
+        return;
+    }
+
+    if (result.intent === "wallet") {
+        ctx.reply(`🏦 Address: \`${account.address}\``, { parse_mode: "Markdown" });
+        return;
+    }
+
+    if (result.intent === "send" && result.amount && result.recipient) {
+        let recipient = result.recipient;
+        const amount = result.amount;
+
+        // SocialConnect Lookup inside AI flow
+        if (recipient.startsWith("+")) {
+            ctx.reply(`🔍 Looking up ${recipient}...`);
+            const resolved = await lookupPhoneNumber(recipient, process.env.AGENT_PRIVATE_KEY as string);
+            if (resolved) {
+                recipient = resolved;
+                ctx.reply(`✅ Found: \`${recipient}\``, { parse_mode: "Markdown" });
+            } else {
+                return ctx.reply(`⚠️ No wallet found for ${recipient}.`);
+            }
+        }
+
+        if (!recipient.startsWith("0x")) {
+            return ctx.reply("❌ Invalid recipient address.");
+        }
+
+        ctx.reply(`💸 Sending ${amount} USDC to ${recipient}...`);
         
-To send money, use format:
-"Send 5 USDC to 0x..."`);
+        try {
+            const hash = await client.writeContract({
+                address: process.env.USDC_ADDRESS as `0x${string}`,
+                abi: USDC_ABI,
+                functionName: 'transfer',
+                args: [recipient as `0x${string}`, BigInt(amount * 1e6)]
+            });
+            ctx.reply(`✅ Sent! Hash: \`${hash}\``, { parse_mode: "Markdown" });
+        } catch (err: any) {
+             ctx.reply(`❌ Failed: ${err.message}`);
+        }
     }
 });
 

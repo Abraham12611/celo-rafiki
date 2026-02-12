@@ -21,6 +21,7 @@
     "@celo/contractkit": "^5.2.1",
     "@celo/identity": "^5.1.2",
     "dotenv": "^16.4.1",
+    "openai": "^6.21.0",
     "telegraf": "^4.15.3",
     "viem": "^2.7.1"
   },
