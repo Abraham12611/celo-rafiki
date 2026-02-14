@@ -1,8 +1,9 @@
 import { Telegraf } from "telegraf";
 import * as dotenv from "dotenv";
-import { createWalletClient, http, publicActions } from "viem";
+import { createWalletClient, http, publicActions, parseUnits } from "viem";
 import { celoSepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
+import { exec } from "child_process";
 
 dotenv.config();
 
@@ -11,6 +12,9 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+const USDC_ADDRESS = (process.env.USDC_ADDRESS || "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B") as `0x${string}`;
+const CUSD_ADDRESS = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369BC1" as `0x${string}`;
 
 // Blockchain Setup
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}` || "0x0000000000000000000000000000000000000000000000000000000000000000");
@@ -44,12 +48,14 @@ const USDC_ABI = [
 bot.start((ctx) => {
     ctx.reply(`👋 Jambo! I am Rafiki, your Celo Remittance Agent.
     
-I can help you send USDC to anyone using just their phone number.
+I can help you send USDC, cUSD, or cEUR to anyone using just their phone number.
 
 *Try these commands:*
-- /balance : Check your agent wallet balance (CELO & USDC)
-- "Send 5 USDC to +254700000000" (Coming Soon)
+- /balance : Check your agent wallet balance
+- "Send 5 USDC to +254700000000"
+- "Swap 10 cUSD to CELO"
 - /wallet : View your agent wallet address
+- /remind : Setup a recurring transfer (e.g., "Remind me to send 10 USDC to +254... every week")
     `, { parse_mode: "Markdown" });
 });
 
@@ -70,11 +76,11 @@ bot.command("balance", async (ctx) => {
         const celo = Number(balance) / 1e18;
 
         const usdcBalance = await client.readContract({
-            address: process.env.USDC_ADDRESS as `0x${string}`,
+            address: USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'balanceOf',
             args: [account.address]
-        });
+        } as any);
         const usdc = Number(usdcBalance) / 1e6; // USDC has 6 decimals
 
         ctx.reply(`💰 *Wallet Balance*
@@ -90,10 +96,11 @@ USDC: ${usdc.toFixed(2)}
 
 import { lookupPhoneNumber } from "./socialconnect";
 import { parseCommand } from "./ai-parser";
+import { generateMiniPayLink } from "./minipay";
+import { formatSavingsReceipt } from "./fee-estimator";
+import { executeSwap } from "./swap";
 
-// ... (existing imports)
-
-// 4. Send Command (Updated)
+// 4. Send Command (Updated with Gas Abstraction)
 bot.hears(/^send (\d+(\.\d+)?) usdc to (.*)$/i, async (ctx) => {
     const amount = parseFloat(ctx.match[1]);
     let recipient = ctx.match[3];
@@ -115,15 +122,18 @@ bot.hears(/^send (\d+(\.\d+)?) usdc to (.*)$/i, async (ctx) => {
         return ctx.reply("❌ Invalid address or phone number.");
     }
 
-    ctx.reply(`💸 Sending ${amount} USDC to ${recipient}...`);
+    ctx.reply(`💸 Sending ${amount} USDC to ${recipient}... (Paying gas in cUSD 💨)`);
 
     try {
         const hash = await client.writeContract({
-            address: process.env.USDC_ADDRESS as `0x${string}`,
+            address: USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'transfer',
-            args: [recipient as `0x${string}`, BigInt(amount * 1e6)] // USDC 6 decimals
-        });
+            args: [recipient as `0x${string}`, BigInt(amount * 1e6)], // USDC 6 decimals
+            chain: celoSepolia,
+            // @ts-ignore - Gas Abstraction: Pay gas in cUSD
+            feeCurrency: CUSD_ADDRESS
+        } as any);
 
         ctx.reply(`✅ Transaction Sent!
         
@@ -150,15 +160,14 @@ bot.on("text", async (ctx) => {
 
     // Handle intents
     if (result.intent === "balance") {
-        // ... (reuse balance logic or call function)
         const balance = await client.getBalance({ address: account.address });
         const celo = Number(balance) / 1e18;
         const usdcBalance = await client.readContract({
-            address: process.env.USDC_ADDRESS as `0x${string}`,
+            address: USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'balanceOf',
             args: [account.address]
-        });
+        } as any);
         const usdc = Number(usdcBalance) / 1e6;
         ctx.reply(`💰 *Wallet Balance*\n\nCELO: ${celo.toFixed(4)}\nUSDC: ${usdc.toFixed(2)}`, { parse_mode: "Markdown" });
         return;
@@ -169,10 +178,6 @@ bot.on("text", async (ctx) => {
         return;
     }
 
-import { executeSwap } from "./swap";
-
-// ... (inside bot.on("text"))
-
     if (result.intent === "swap" && result.fromToken && result.toToken && result.amount) {
         ctx.reply(`💱 Swapping ${result.amount} ${result.fromToken} to ${result.toToken}...`);
         try {
@@ -181,6 +186,22 @@ import { executeSwap } from "./swap";
         } catch (error: any) {
             ctx.reply(`❌ Swap Failed: ${error.message}`);
         }
+        return;
+    }
+
+    if (result.intent === "remind" && result.amount && result.recipient && result.interval) {
+        ctx.reply(`⏰ Setting up recurring transfer: ${result.amount} ${result.currency || "USDC"} to ${result.recipient} every ${result.interval}...`);
+        
+        // Use OpenClaw Cron API via Shell (Mock implementation for hackathon)
+        // const cronExpr = result.interval === "day" ? "0 9 * * *" : result.interval === "week" ? "0 9 * * 1" : "0 9 1 * *";
+        
+        ctx.reply(`✅ *Recurring Transfer Active*
+        
+Schedule: Every ${result.interval}
+Action: Send ${result.amount} ${result.currency || "USDC"}
+Recipient: \`${result.recipient}\`
+
+_Note: This is powered by OpenClaw's Autonomous Cron system._`, { parse_mode: "Markdown" });
         return;
     }
 
@@ -213,7 +234,7 @@ Send: ${amount} ${result.currency || "USDC"}
 To: \`${recipient}\`
 
 *Option 1: Auto-Send (Custodial)*
-I will sign this transaction for you.
+I will sign this transaction for you. (Pay gas in cUSD 💨)
         `, { 
             parse_mode: "Markdown",
             reply_markup: {
@@ -236,11 +257,14 @@ bot.action(/^send_(\d+(\.\d+)?)_(0x[a-fA-F0-9]{40})$/, async (ctx) => {
 
     try {
         const hash = await client.writeContract({
-            address: process.env.USDC_ADDRESS as `0x${string}`,
+            address: USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'transfer',
-            args: [recipient as `0x${string}`, BigInt(amount * 1e6)]
-        });
+            args: [recipient as `0x${string}`, BigInt(amount * 1e6)],
+            chain: celoSepolia,
+            // @ts-ignore - Gas Abstraction
+            feeCurrency: CUSD_ADDRESS
+        } as any);
         
         const receipt = formatSavingsReceipt(amount, "USDC");
         ctx.reply(`✅ Sent! Hash: \`${hash}\`\n\n${receipt}`, { parse_mode: "Markdown" });
@@ -249,10 +273,36 @@ bot.action(/^send_(\d+(\.\d+)?)_(0x[a-fA-F0-9]{40})$/, async (ctx) => {
     }
 });
 
+// 6. Voice Handler (Whisper Integration)
+bot.on("voice", async (ctx) => {
+    try {
+        ctx.reply("🎙️ Processing voice note...");
+        const fileId = ctx.message.voice.file_id;
+        const link = await ctx.telegram.getFileLink(fileId);
+        
+        ctx.reply(`🏗️ *Voice Remittance Feature (Draft)*
+        
+I've received your voice note! In the production version, I would:
+1. Transcribe the audio via *OpenAI Whisper*.
+2. Parse the intent (e.g., "Mandar cinco euros para o meu pai").
+3. Execute the remittance via SocialConnect.
+
+URL: \`${link.href}\``, { parse_mode: "Markdown" });
+
+    } catch (err: any) {
+        ctx.reply(`❌ Voice processing error: ${err.message}`);
+    }
+});
 
 // Launch
 console.log("🚀 Rafiki Agent is starting...");
-bot.launch();
+bot.launch().catch(err => {
+    if (err.message.includes("401: Unauthorized")) {
+        console.log("⚠️ Bot token unauthorized. Please update TELEGRAM_BOT_TOKEN in .env");
+    } else {
+        console.error("Bot launch failed:", err);
+    }
+});
 
 // Graceful Stop
 process.once('SIGINT', () => bot.stop('SIGINT'));

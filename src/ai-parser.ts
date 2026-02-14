@@ -23,6 +23,7 @@ export async function parseCommand(text: string): Promise<{
     recipient?: string;
     fromToken?: string;
     toToken?: string;
+    interval?: string;
 } | null> {
 
   try {
@@ -35,12 +36,13 @@ export async function parseCommand(text: string): Promise<{
           User input will be natural language.
           
           Extract the following:
-          - intent: "send", "swap", "balance", "wallet", or "unknown"
+          - intent: "send", "swap", "balance", "wallet", "remind", or "unknown"
           - amount: number
           - currency: "USDC", "cUSD", "cEUR", "CELO", "BRL", "XOF" (normalize to ticker)
-          - recipient: phone number or address (for send)
+          - recipient: phone number or address (for send/remind)
           - fromToken: symbol (for swap)
           - toToken: symbol (for swap)
+          - interval: "day", "week", "month" (for remind)
           
           Instructions:
           1. Detect language (English, Spanish, French, Portuguese).
@@ -54,7 +56,8 @@ export async function parseCommand(text: string): Promise<{
           Example (PT): "Mandar 20 reais"
           {"intent": "send", "amount": 20, "currency": "BRL", "recipient": null}
 
-
+          Example (EN): "Remind me to send 5 USDC to +123 every week"
+          {"intent": "remind", "amount": 5, "currency": "USDC", "recipient": "+123", "interval": "week"}
           
           Output ONLY JSON. No markdown. No chatter.
           

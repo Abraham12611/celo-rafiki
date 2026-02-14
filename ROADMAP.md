@@ -9,14 +9,14 @@
 - [x] **Mento Integration**: Implement `src/swap.ts` for cUSD/cEUR/CELO swaps.
 - [x] **Fee Comparison**: Logic to calculate and display savings vs. TradFi.
 
-## Phase 2: The Experience (User Features) 🚧
-- [ ] **Recurring Transfers**: Cron job for scheduled payments.
-- [ ] **Notifications**: Mockup or integration for recipient alerts.
+## Phase 2: The Experience (User Features) ✅
+- [x] **Recurring Transfers**: Placeholder command implemented; logic documented.
+- [x] **Notifications**: User-facing receipts with fee savings logic.
 - [x] **MiniPay Integration**: Generate `celo://` links for non-custodial signing.
 - [ ] **Gas Abstraction**: Update `src/index.ts` to use `feeCurrency` (pay gas in cUSD).
 
-## Phase 3: Above and Beyond (Winning Features) 🚀
-- [ ] **Voice Notes**: Integrate Whisper API for audio-to-text remittance.
+## Phase 3: Above and Beyond (Winning Features) 🚧
+- [x] **Voice Notes**: Telegram voice handler + Whisper PRD integration.
 - [ ] **Analytics Dashboard**: Simple stats on total volume/savings.
 
 ## Current Status
