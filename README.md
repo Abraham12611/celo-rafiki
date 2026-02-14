@@ -1,72 +1,107 @@
-# Celo Rafiki - AI Remittance Agent
+# 📱 Celo Rafiki
 
-An AI-powered Telegram bot for seamless stablecoin (USDC/cUSD) remittances on the Celo blockchain. Rafiki helps users check balances and send payments using simple commands.
+> **Build with Celo 2026** — AI-Powered Remittance Agent for Mobile-First Payments
 
-## Features
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Telegraf](https://img.shields.io/badge/Telegraf-4.15-orange)](https://telegraf.js.org/)
+[![Celo](https://img.shields.io/badge/Celo-Alfajores-green)](https://celo.org/)
+[![Mento](https://img.shields.io/badge/Mento-SDK-yellow)](https://mento.org/)
 
-- 💸 **Send USDC**: Transfer stablecoins instantly on Celo Sepolia Testnet.
-- 💰 **Check Balance**: View both CELO (gas) and USDC balances.
-- 🏦 **Wallet Info**: Easily view and copy your agent's wallet address.
-- 🤖 **AI-Ready**: Built on a modular architecture ready for NLP integration.
+**Celo Rafiki** ("Friend" in Swahili) is an AI concierge that enables users to send global remittances using natural language. It abstracts the complexity of blockchain (gas fees, addresses, swaps) behind a familiar chat interface (Telegram/WhatsApp), leveraging **SocialConnect** for phone-number-based identity and **Mento** for instant currency conversion.
 
-## Prerequisites
+## 🏗 Project Structure
 
-- **Node.js**: v18 or higher
-- **Telegram Account**: To interact with the bot.
-- **Bot Token**: From [BotFather](https://t.me/BotFather).
-- **Celo Wallet**: A private key for the agent (generated or existing).
+```
+celo-rafiki/
+├── src/
+│   ├── ai-parser.ts      # 🧠 NLP Intent Parsing (Llama 3 via OpenRouter)
+│   ├── socialconnect.ts  # 🆔 Phone Number -> Address resolution (ODIS)
+│   ├── swap.ts           # 💱 Mento Protocol integration
+│   ├── fee-estimator.ts  # 📉 TradFi vs. Celo fee comparison
+│   ├── minipay.ts        # 📱 MiniPay/Valora deep-link generation
+│   └── index.ts          # 🤖 Telegram Bot Entry Point
+├── package.json
+└── tsconfig.json
+```
 
-## Setup Instructions
+## ⛓️ Celo Integration
 
-### 1. Clone and Install
+Celo Rafiki leverages the core mobile-first features of the Celo blockchain to provide a seamless user experience.
+
+### Alfajores Testnet Assets
+
+| Asset | Address |
+|-------|---------|
+| **CELO** | [`0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9`](https://alfajores.celoscan.io/address/0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9) |
+| **cUSD** | [`0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`](https://alfajores.celoscan.io/address/0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1) |
+| **cEUR** | [`0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F`](https://alfajores.celoscan.io/address/0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F) |
+| **USDC** | [`0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B`](https://alfajores.celoscan.io/address/0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B) |
+
+### How It Works
+
+1. **Natural Intent** → User says "Send $10 to my sister +254..." in English, Spanish, French, or Portuguese.
+2. **AI Parsing** → Rafiki uses Llama 3 to extract the amount, currency, and recipient identifier.
+3. **Identity Resolution** → **SocialConnect** (ODIS) maps the phone number to an on-chain Celo address.
+4. **Multi-Corridor Swap** → If the user's balance is in cUSD but the recipient needs cEUR, **Mento** executes an atomic swap.
+5. **Fee Optimization** → Rafiki calculates savings vs. Western Union/Wise and displays a "Savings Receipt."
+6. **Flexible Signing** → User can let the Agent sign (custodial) or use a **MiniPay deep-link** to sign non-custodially.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 20+
+- Telegram Bot Token ([@BotFather](https://t.me/BotFather))
+- OpenRouter API Key
+
+### Setup & Installation
+
 ```bash
+# 1. Clone & Install
 git clone https://github.com/Abraham12611/celo-rafiki.git
 cd celo-rafiki
 npm install
-```
 
-### 2. Configure Environment
-Create a `.env` file in the root directory and add the following variables:
+# 2. Configure Environment
+cp .env.example .env
+# Fill in TELEGRAM_BOT_TOKEN, AGENT_PRIVATE_KEY, and OPENROUTER_API_KEY
 
-```env
-# Celo Network (Celo Sepolia Testnet)
-CELO_RPC_URL=https://forno.celo-sepolia.celo-testnet.org
-CELO_CHAIN_ID=11142220
-
-# Telegram Bot Token (Get from @BotFather)
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-
-# Agent Wallet Private Key (Keep Secret!)
-# Format: 0x...
-AGENT_PRIVATE_KEY=your_private_key_here
-
-# Token Contracts (Celo Sepolia)
-# USDC Contract Address
-USDC_ADDRESS=0x01C5C0122039549AD1493B8220cABEdD739BC44E
-```
-
-### 3. Run the Bot
-Start the bot in development mode:
-```bash
-npx ts-node src/index.ts
-```
-Or build and run:
-```bash
-npm run build
+# 3. Run in Dev Mode
 npm start
 ```
 
-## How to Use
+## 🔌 Bot Commands
 
-1. **Open Telegram** and find your bot.
-2. **Start**: Send `/start` to wake up Rafiki.
-3. **Check Funds**: Send `/balance` to see your CELO and USDC holdings.
-4. **Get Address**: Send `/wallet` to get your deposit address.
-5. **Send Money**:
-   - Format: `Send <amount> USDC to <address>`
-   - Example: `Send 5 USDC to 0x123...abc`
+Interact with Rafiki via Telegram:
 
-## Troubleshooting
+| Command | Description |
+|---------|-------------|
+| `/start` | Initialize Rafiki and view help |
+| `/balance` | Check your gas (CELO) and stablecoin (USDC/cUSD) balances |
+| `/wallet` | View your agent-managed wallet address |
+| `Send 10 cUSD to +12345678` | Natural language remittance (Multi-lingual support) |
+| `Swap 5 CELO to cUSD` | Instant conversion via Mento Protocol |
 
-- **No Funds?**: Get testnet CELO from the [Celo Faucet](https://faucet.celo.org/alfajores) (select Sepolia).
-- **Transaction Failed?**: Ensure you have enough CELO for gas fees (~0.001 CELO per tx).
+## 📊 Tech Stack
+
+- **Framework**: Node.js & TypeScript
+- **Agent Orchestration**: OpenClaw
+- **Blockchain**: `viem` (Core Transactions), `ethers` v6 (Mento/ODIS support)
+- **Identity**: `@celo/identity` (SocialConnect / ODIS)
+- **DeFi**: `@mento-protocol/mento-sdk`
+- **AI**: OpenAI SDK with Llama 3.3 70B (via OpenRouter)
+
+## 🏆 Hackathon Prize Targets
+
+| Prize | Our Angle |
+|-------|-----------|
+| **Remittance Intent Agent** | Primary target. Full implementation of the organizer's suggested idea. |
+| **SocialConnect Integration** | First-class phone-number-to-address resolution for emerging markets. |
+| **MiniPay / Mini App** | Mobile-optimized deep-linking for trustless signing in Opera MiniPay. |
+
+## 📄 License
+
+MIT
+
+---
+
+**Built for the Celo Hackathon 2026** • Powered by OpenClaw 🦞

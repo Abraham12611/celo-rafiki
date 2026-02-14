@@ -169,7 +169,23 @@ bot.on("text", async (ctx) => {
         return;
     }
 
+import { executeSwap } from "./swap";
+
+// ... (inside bot.on("text"))
+
+    if (result.intent === "swap" && result.fromToken && result.toToken && result.amount) {
+        ctx.reply(`💱 Swapping ${result.amount} ${result.fromToken} to ${result.toToken}...`);
+        try {
+            const txHash = await executeSwap(result.fromToken, result.toToken, result.amount.toString());
+            ctx.reply(`✅ Swap Complete!\nHash: \`${txHash}\``, { parse_mode: "Markdown" });
+        } catch (error: any) {
+            ctx.reply(`❌ Swap Failed: ${error.message}`);
+        }
+        return;
+    }
+
     if (result.intent === "send" && result.amount && result.recipient) {
+
         let recipient = result.recipient;
         const amount = result.amount;
 
@@ -189,21 +205,50 @@ bot.on("text", async (ctx) => {
             return ctx.reply("❌ Invalid recipient address.");
         }
 
-        ctx.reply(`💸 Sending ${amount} USDC to ${recipient}...`);
+        const miniPayLink = generateMiniPayLink(recipient, amount, result.currency || "cUSD");
+
+        ctx.reply(`💸 *Confirm Transaction*
         
-        try {
-            const hash = await client.writeContract({
-                address: process.env.USDC_ADDRESS as `0x${string}`,
-                abi: USDC_ABI,
-                functionName: 'transfer',
-                args: [recipient as `0x${string}`, BigInt(amount * 1e6)]
-            });
-            ctx.reply(`✅ Sent! Hash: \`${hash}\``, { parse_mode: "Markdown" });
-        } catch (err: any) {
-             ctx.reply(`❌ Failed: ${err.message}`);
-        }
+Send: ${amount} ${result.currency || "USDC"}
+To: \`${recipient}\`
+
+*Option 1: Auto-Send (Custodial)*
+I will sign this transaction for you.
+        `, { 
+            parse_mode: "Markdown",
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "✅ Auto-Send (Agent)", callback_data: `send_${amount}_${recipient}` }],
+                    [{ text: "📱 Sign with MiniPay/Valora", url: miniPayLink }]
+                ]
+            }
+        });
     }
 });
+
+// Handle Callback Query for Auto-Send
+bot.action(/^send_(\d+(\.\d+)?)_(0x[a-fA-F0-9]{40})$/, async (ctx) => {
+    const amount = parseFloat(ctx.match[1]);
+    const recipient = ctx.match[3];
+    
+    ctx.answerCbQuery("Sending transaction...");
+    ctx.editMessageText(`⏳ Executing transfer of ${amount} USDC...`);
+
+    try {
+        const hash = await client.writeContract({
+            address: process.env.USDC_ADDRESS as `0x${string}`,
+            abi: USDC_ABI,
+            functionName: 'transfer',
+            args: [recipient as `0x${string}`, BigInt(amount * 1e6)]
+        });
+        
+        const receipt = formatSavingsReceipt(amount, "USDC");
+        ctx.reply(`✅ Sent! Hash: \`${hash}\`\n\n${receipt}`, { parse_mode: "Markdown" });
+    } catch (err: any) {
+         ctx.reply(`❌ Failed: ${err.message}`);
+    }
+});
+
 
 // Launch
 console.log("🚀 Rafiki Agent is starting...");

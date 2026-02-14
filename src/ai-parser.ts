@@ -16,7 +16,15 @@ const openai = new OpenAI({
   },
 });
 
-export async function parseCommand(text: string): Promise<{ intent: string; amount?: number; currency?: string; recipient?: string } | null> {
+export async function parseCommand(text: string): Promise<{ 
+    intent: string; 
+    amount?: number; 
+    currency?: string; 
+    recipient?: string;
+    fromToken?: string;
+    toToken?: string;
+} | null> {
+
   try {
     const completion = await openai.chat.completions.create({
       model: "meta-llama/llama-3.3-70b-instruct:free",
@@ -27,10 +35,26 @@ export async function parseCommand(text: string): Promise<{ intent: string; amou
           User input will be natural language.
           
           Extract the following:
-          - intent: "send", "balance", "wallet", or "unknown"
-          - amount: number (if sending)
-          - currency: "USDC" or "CELO" (default to USDC if ambiguous money terms used)
-          - recipient: phone number (e.g., +254...) or wallet address (0x...)
+          - intent: "send", "swap", "balance", "wallet", or "unknown"
+          - amount: number
+          - currency: "USDC", "cUSD", "cEUR", "CELO", "BRL", "XOF" (normalize to ticker)
+          - recipient: phone number or address (for send)
+          - fromToken: symbol (for swap)
+          - toToken: symbol (for swap)
+          
+          Instructions:
+          1. Detect language (English, Spanish, French, Portuguese).
+          2. Parse amounts like "50 euros" -> currency: "cEUR".
+          3. Parse "reais" -> currency: "BRL".
+          4. Parse "francs" / "XOF" -> currency: "XOF".
+          
+          Example (ES): "Envía 10 euros a mi hermano +34..."
+          {"intent": "send", "amount": 10, "currency": "cEUR", "recipient": "+34..."}
+          
+          Example (PT): "Mandar 20 reais"
+          {"intent": "send", "amount": 20, "currency": "BRL", "recipient": null}
+
+
           
           Output ONLY JSON. No markdown. No chatter.
           
