@@ -13,11 +13,11 @@
 - [x] **Recurring Transfers**: Placeholder command implemented; logic documented.
 - [x] **Notifications**: User-facing receipts with fee savings logic.
 - [x] **MiniPay Integration**: Generate `celo://` links for non-custodial signing.
-- [ ] **Gas Abstraction**: Update `src/index.ts` to use `feeCurrency` (pay gas in cUSD).
+- [x] **Gas Abstraction**: Update `src/index.ts` to use `feeCurrency` (pay gas in cUSD).
 
-## Phase 3: Above and Beyond (Winning Features) 🚧
+## Phase 3: Above and Beyond (Winning Features) ✅
 - [x] **Voice Notes**: Telegram voice handler + Whisper PRD integration.
-- [ ] **Analytics Dashboard**: Simple stats on total volume/savings.
+- [x] **Analytics Dashboard**: Simple stats on total volume/savings.
 
 ## Current Status
 **Progress:** ~85%

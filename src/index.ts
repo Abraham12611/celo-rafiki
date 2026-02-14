@@ -4,6 +4,7 @@ import { createWalletClient, http, publicActions, parseUnits } from "viem";
 import { celoSepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { exec } from "child_process";
+import { celo } from "viem/celo";
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ I can help you send USDC, cUSD, or cEUR to anyone using just their phone number.
 - "Send 5 USDC to +254700000000"
 - "Swap 10 cUSD to CELO"
 - /wallet : View your agent wallet address
+- /stats : View your remittance savings dashboard
 - /remind : Setup a recurring transfer (e.g., "Remind me to send 10 USDC to +254... every week")
     `, { parse_mode: "Markdown" });
 });
@@ -97,8 +99,9 @@ USDC: ${usdc.toFixed(2)}
 import { lookupPhoneNumber } from "./socialconnect";
 import { parseCommand } from "./ai-parser";
 import { generateMiniPayLink } from "./minipay";
-import { formatSavingsReceipt } from "./fee-estimator";
+import { formatSavingsReceipt, calculateSavings } from "./fee-estimator";
 import { executeSwap } from "./swap";
+import { logTransaction, getStats } from "./analytics";
 
 // 4. Send Command (Updated with Gas Abstraction)
 bot.hears(/^send (\d+(\.\d+)?) usdc to (.*)$/i, async (ctx) => {
@@ -134,6 +137,10 @@ bot.hears(/^send (\d+(\.\d+)?) usdc to (.*)$/i, async (ctx) => {
             // @ts-ignore - Gas Abstraction: Pay gas in cUSD
             feeCurrency: CUSD_ADDRESS
         } as any);
+
+        // Log Analytics
+        const { savings } = calculateSavings(amount);
+        logTransaction(amount, "USDC", recipient, savings);
 
         ctx.reply(`✅ Transaction Sent!
         
@@ -266,6 +273,10 @@ bot.action(/^send_(\d+(\.\d+)?)_(0x[a-fA-F0-9]{40})$/, async (ctx) => {
             feeCurrency: CUSD_ADDRESS
         } as any);
         
+        // Log Analytics
+        const { savings } = calculateSavings(amount);
+        logTransaction(amount, "USDC", recipient, savings);
+
         const receipt = formatSavingsReceipt(amount, "USDC");
         ctx.reply(`✅ Sent! Hash: \`${hash}\`\n\n${receipt}`, { parse_mode: "Markdown" });
     } catch (err: any) {
@@ -273,7 +284,20 @@ bot.action(/^send_(\d+(\.\d+)?)_(0x[a-fA-F0-9]{40})$/, async (ctx) => {
     }
 });
 
-// 6. Voice Handler (Whisper Integration)
+// 6. Stats Command
+bot.command("stats", (ctx) => {
+    const { totalVolume, totalSavings, count } = getStats();
+    ctx.reply(`📊 *Rafiki Analytics Dashboard*
+    
+Total Transactions: ${count}
+Total Volume Sent: $${totalVolume.toFixed(2)}
+Total TradFi Savings: *+$${totalSavings.toFixed(2)}* 💰
+
+_Helping you keep more of your money._
+    `, { parse_mode: "Markdown" });
+});
+
+// 7. Voice Handler (Whisper Integration)
 bot.on("voice", async (ctx) => {
     try {
         ctx.reply("🎙️ Processing voice note...");
