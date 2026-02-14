@@ -1,10 +1,9 @@
 import { Telegraf } from "telegraf";
 import * as dotenv from "dotenv";
 import { createWalletClient, http, publicActions, parseUnits } from "viem";
-import { celoSepolia } from "viem/chains";
+import { celoSepolia, celo } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { exec } from "child_process";
-import { celo } from "viem/celo";
 
 dotenv.config();
 
